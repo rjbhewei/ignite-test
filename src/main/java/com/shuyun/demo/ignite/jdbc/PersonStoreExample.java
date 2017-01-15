@@ -39,7 +39,7 @@ public class PersonStoreExample {
 
         System.setProperty("log4j.configuration", logUrl.getPath());
 
-        IgniteLogger igniteLogger = new Log4J2Logger(logUrl.getPath());
+        IgniteLogger igniteLogger = new Log4J2Logger(logUrl);
 
         IgniteConfiguration configuration = new IgniteConfiguration();
 
