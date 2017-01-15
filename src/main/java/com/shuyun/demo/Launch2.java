@@ -39,45 +39,15 @@ public class Launch2 {
 
     public static void main(String[] args) throws IgniteException, IgniteCheckedException {
 
-        URL logUrl = ClassLoader.getSystemClassLoader().getResource("log4j2.xml");
-
-        if(logUrl == null) {
-            System.exit(0);
-        }
-
-        System.setProperty("log4j.configuration", logUrl.getPath());
-
-        IgniteLogger igniteLogger = new Log4J2Logger(logUrl);
-
-        IgniteConfiguration configuration = new IgniteConfiguration();
-
-        configuration.setGridLogger(igniteLogger);
-
-        TcpDiscoverySpi discoverySpi = new TcpDiscoverySpi();
-
-        TcpDiscoveryMulticastIpFinder ipFinder = new TcpDiscoveryMulticastIpFinder();
-
-        ipFinder.setAddresses(Lists.newArrayList("172.18.53.124","172.18.2.40"));
-
-        discoverySpi.setIpFinder(ipFinder);
-
-        configuration.setDiscoverySpi(discoverySpi);
-
-        configuration.setPeerClassLoadingEnabled(true);
-
-        Ignition.setClientMode(true);
-
-        try(Ignite ignite = Ignition.start(configuration)) {
-
+        try(Ignite ignite = Ignition.start(getConfiguration())) {
 
             CacheConfiguration<Long, Organization> organizationCacheCfg = getOrganizationCache();
 
             CacheConfiguration<Long, Person> personCacheCfg = getPersonCache();
 
-
             try (IgniteCache<Long, Organization> organizationCache = ignite.getOrCreateCache(organizationCacheCfg);
-                 IgniteCache<Long, Person> personCache = ignite.getOrCreateCache(personCacheCfg)
-            ) {
+                 IgniteCache<Long, Person> personCache = ignite.getOrCreateCache(personCacheCfg)) {
+
                 CompletionListenerFuture listener = new CompletionListenerFuture();
 
                 organizationCache.loadAll(Sets.newHashSet(5L,1L,3L,4L),true,listener);
@@ -98,9 +68,7 @@ public class Launch2 {
 
                 SqlQuery<Long,Person> sql = new SqlQuery<>(Person.class, "from person");
 
-               personCache.query(sql);
-
-
+                personCache.query(sql);
 
                 log.info("personCache-----{}", personCache.query(sql).getAll());
 
@@ -112,7 +80,27 @@ public class Launch2 {
 
     }
 
+    private static IgniteConfiguration getConfiguration() throws IgniteCheckedException {
+
+        URL logUrl = ClassLoader.getSystemClassLoader().getResource("log4j2.xml");
+
+        if(logUrl == null) {
+            System.exit(0);
+        }
+
+        System.setProperty("log4j.configuration", logUrl.getPath());
+
+        return new IgniteConfiguration()
+                .setGridLogger(new Log4J2Logger(logUrl))
+                .setPeerClassLoadingEnabled(true)
+                .setClientMode(true)
+                .setDiscoverySpi(new TcpDiscoverySpi().setIpFinder(new TcpDiscoveryMulticastIpFinder(){{
+                    setAddresses(Lists.newArrayList("172.18.53.124","172.18.2.40"));
+                }}));
+    }
+
     private static void select(IgniteCache<Long, Person> personCache) {
+
         String s="organizationCache";
 
         String sql = "select p.id, p.name, p.salary  from person as p";
