@@ -24,7 +24,6 @@ import javax.cache.configuration.FactoryBuilder;
 import javax.cache.integration.CompletionListenerFuture;
 import java.net.URL;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 
@@ -36,6 +35,10 @@ import java.util.List;
  */
 @Slf4j
 public class Launch2 {
+
+    private static final String ORGANIZATION_CACHE_NAME = "organizationCache";
+
+    private static final String PERSON_CACHE_NAME = "personCache";
 
     public static void main(String[] args) throws IgniteException, IgniteCheckedException {
 
@@ -101,15 +104,13 @@ public class Launch2 {
 
     private static void select(IgniteCache<Long, Person> personCache) {
 
-        String s="organizationCache";
-
         String sql = "select p.id, p.name, p.salary  from person as p";
 
         List<List<?>> res = personCache.query(new SqlFieldsQuery(sql).setDistributedJoins(true)).getAll();
 
         log.info("-----1----{}",res.size());
 
-        sql = "select o.name, o.city from \"" + s + "\".organization as o" ;
+        sql = "select o.name, o.city from \"" + ORGANIZATION_CACHE_NAME + "\".organization as o" ;
 
         res = personCache.query(new SqlFieldsQuery(sql).setDistributedJoins(true)).getAll();
 
@@ -117,7 +118,7 @@ public class Launch2 {
 
          sql =
                 "select p.id, p.name, p.salary, p.orgId ,o.name ,o.city " +
-                        "from person as p, \"" + s + "\".organization as o " +
+                        "from person as p, \"" + ORGANIZATION_CACHE_NAME + "\".organization as o " +
                         "where p.orgId = o.id";
 
         res = personCache.query(new SqlFieldsQuery(sql).setDistributedJoins(true)).getAll();
@@ -130,46 +131,31 @@ public class Launch2 {
 
     private static CacheConfiguration<Long, Person> getPersonCache(){
 
-        CacheConfiguration<Long, Person> cacheCfg = new CacheConfiguration<>("personCache");
+        QueryEntity entity = new QueryEntity(){{
 
-        cacheCfg.setReadThrough(true);
+            setKeyType(Long.class.getName());
 
-        cacheCfg.setWriteThrough(true);
+            setValueType(Person.class.getName());
 
-        cacheCfg.setCacheStoreFactory(FactoryBuilder.factoryOf(PersonStore.class));
+            setFields(new LinkedHashMap<String, String>(){{
+                put("id", Long.class.getName());
+                put("name", String.class.getName());
+                put("orgId", Long.class.getName());
+                put("salary", Integer.class.getName());
+            }});
 
-        cacheCfg.setCacheMode(CacheMode.PARTITIONED);
+            setIndexes(new ArrayList<QueryIndex>(3){{
+                add(new QueryIndex("id"));
+                add(new QueryIndex("orgId"));
+            }});
+        }};
 
-        QueryEntity entity = new QueryEntity();
+        CacheConfiguration<Long, Person> cacheCfg = new CacheConfiguration<Long, Person>(PERSON_CACHE_NAME)
+                .setCacheMode(CacheMode.PARTITIONED)
+                .setCacheStoreFactory(FactoryBuilder.factoryOf(PersonStore.class))
+                .setQueryEntities(Lists.newArrayList(entity));
 
-        entity.setKeyType(Long.class.getName());
-
-        entity.setValueType(Person.class.getName());
-
-        LinkedHashMap<String, String> fields = new LinkedHashMap<>();
-
-        fields.put("id", Long.class.getName());
-
-        fields.put("name", String.class.getName());
-
-        fields.put("orgId", Long.class.getName());
-
-        fields.put("salary", Integer.class.getName());
-
-        entity.setFields(fields);
-
-
-
-        Collection<QueryIndex> indexes = new ArrayList<>(3);
-        indexes.add(new QueryIndex("id"));
-        indexes.add(new QueryIndex("orgId"));
-        entity.setIndexes(indexes);
-
-
-
-        cacheCfg.setQueryEntities(Lists.newArrayList(entity));
-
-        //cacheCfg.setIndexedTypes(Long.class, Person.class);
+        cacheCfg.setReadThrough(true).setWriteThrough(true);
 
         return cacheCfg;
     }
@@ -177,39 +163,30 @@ public class Launch2 {
 
     private static CacheConfiguration<Long, Organization> getOrganizationCache(){
 
-        CacheConfiguration<Long, Organization> cacheCfg = new CacheConfiguration<>("organizationCache");
+        QueryEntity entity=new QueryEntity(){{
 
-        cacheCfg.setReadThrough(true);
+            setKeyType(Long.class.getName());
 
-        cacheCfg.setWriteThrough(true);
+            setValueType(Organization.class.getName());
 
-        //cacheCfg.setEvictionPolicy(new LruEvictionPolicy(2)) ;
+            setFields(new LinkedHashMap<String, String>(){{
+                put("id", Long.class.getName());
+                put("name", String.class.getName());
+                put("city", String.class.getName());
+            }});
 
-        cacheCfg.setCacheStoreFactory(FactoryBuilder.factoryOf(OrganizationStore.class));
+            setIndexes(new ArrayList<QueryIndex>(1){{
+                add(new QueryIndex("id"));
+            }});
+        }};
 
-        cacheCfg.setCacheMode(CacheMode.PARTITIONED);
+        CacheConfiguration<Long, Organization> cacheCfg = new CacheConfiguration<Long, Organization>(ORGANIZATION_CACHE_NAME)
+                .setCacheMode(CacheMode.PARTITIONED)
+                .setCacheStoreFactory(FactoryBuilder.factoryOf(OrganizationStore.class))
+                //.setEvictionPolicy(new LruEvictionPolicy(2))
+                .setQueryEntities(Lists.newArrayList(entity));
 
-        QueryEntity entity=new QueryEntity();
-
-        entity.setKeyType(Long.class.getName());
-
-        entity.setValueType(Organization.class.getName());
-
-        LinkedHashMap<String, String> fields = new LinkedHashMap<>();
-
-        fields.put("id", Long.class.getName());
-
-        fields.put("name", String.class.getName());
-
-        fields.put("city", String.class.getName());
-
-        entity.setFields(fields);
-
-        Collection<QueryIndex> indexes = new ArrayList<>(3);
-        indexes.add(new QueryIndex("id"));
-        entity.setIndexes(indexes);
-
-        cacheCfg.setQueryEntities(Lists.newArrayList(entity));
+        cacheCfg.setReadThrough(true).setWriteThrough(true);
 
         //cacheCfg.setIndexedTypes(Long.class, Organization.class);
 
