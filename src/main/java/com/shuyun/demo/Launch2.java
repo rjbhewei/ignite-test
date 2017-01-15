@@ -131,11 +131,7 @@ public class Launch2 {
 
     private static CacheConfiguration<Long, Person> getPersonCache(){
 
-        QueryEntity entity = new QueryEntity(){{
-
-            setKeyType(Long.class.getName());
-
-            setValueType(Person.class.getName());
+        QueryEntity entity = new QueryEntity(Long.class.getName() , Person.class.getName()){{
 
             setFields(new LinkedHashMap<String, String>(){{
                 put("id", Long.class.getName());
@@ -163,11 +159,7 @@ public class Launch2 {
 
     private static CacheConfiguration<Long, Organization> getOrganizationCache(){
 
-        QueryEntity entity=new QueryEntity(){{
-
-            setKeyType(Long.class.getName());
-
-            setValueType(Organization.class.getName());
+        QueryEntity entity = new QueryEntity(Long.class.getName() , Organization.class.getName()){{
 
             setFields(new LinkedHashMap<String, String>(){{
                 put("id", Long.class.getName());
